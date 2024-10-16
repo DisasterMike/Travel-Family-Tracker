@@ -25,7 +25,6 @@ async function getUsers() {
   users = getUsers.rows;
 }
 await getUsers();
-// let currentUser = users[0];
 let currentUser = {};
 
 async function checkVisisted() {
@@ -65,8 +64,7 @@ app.post("/add", async (req, res) => {
     const countryCode = data.country_code;
 
     // check if the searched country is already in the database for the current user
-    const currentSearch = await db.query("SELECT * FROM visited_countries WHERE country_code = $1 AND user_id = $2;", [countryCode, currentUser.id])
-    console.log(`searched rows: ${currentSearch.rows}`);
+    const currentSearch = await db.query("SELECT * FROM visited_countries WHERE country_code = $1 AND user_id = $2;", [countryCode, currentUser.id]);
     if(currentSearch.rows.length > 0){
       errorMessage = "That country has already been added."
       res.redirect("/");
@@ -81,13 +79,11 @@ app.post("/add", async (req, res) => {
       res.redirect("/");
     } catch (err) {
       console.log(err);
-      // TODO: render the page with errors
       errorMessage = "Error, couldn't insert into the database."
       res.redirect("/");
     }
   } catch (err) {
     console.log(err);
-    // TODO: render the page with errors
     errorMessage = "Sorry, that country doesn't exist."
       res.redirect("/");
   }
@@ -105,9 +101,6 @@ app.post("/user", async (req, res) => {
 });
 
 app.post("/new", async (req, res) => {
-  //Hint: The RETURNING keyword can return the data that was inserted.
-  //https://www.postgresql.org/docs/current/dml-returning.html
-
   try{
     const createNewUser = await db.query("INSERT INTO users (name, color) VALUES ($1, $2) RETURNING *", [req.body.name, req.body.color]);
 
