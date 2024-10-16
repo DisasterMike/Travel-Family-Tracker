@@ -48,8 +48,8 @@ app.get("/", async (req, res) => {
     color: currentUser.color,
     error: errorMessage
   });
+  // reset the error message so it doesn't show up after rendering
   errorMessage = null;
-  console.log(errorMessage);
 });
 
 app.post("/add", async (req, res) => {
@@ -94,14 +94,12 @@ app.post("/add", async (req, res) => {
 });
 
 app.post("/user", async (req, res) => {
-  console.log(req.body);
   if(req.body.user){
     const userQuery = await db.query("SELECT * FROM users WHERE id = $1;", [req.body.user]);
     currentUser = userQuery.rows[0];
 
     res.redirect("/");
   }else{
-    console.log("clicked on a family");
     res.render("new.ejs");
   }
 });
@@ -110,11 +108,17 @@ app.post("/new", async (req, res) => {
   //Hint: The RETURNING keyword can return the data that was inserted.
   //https://www.postgresql.org/docs/current/dml-returning.html
 
-  const createNewUser = await db.query("INSERT INTO users (name, color) VALUES ($1, $2) RETURNING *", [req.body.name, req.body.color]);
+  try{
+    const createNewUser = await db.query("INSERT INTO users (name, color) VALUES ($1, $2) RETURNING *", [req.body.name, req.body.color]);
 
-  currentUser = createNewUser.rows[0];
+    currentUser = createNewUser.rows[0];
 
-  res.redirect("/");
+    res.redirect("/");
+  }catch (err){
+    console.log(err);
+    errorMessage = "That user has already been added."
+    res.redirect("/");
+  }
 });
 
 app.listen(port, () => {
