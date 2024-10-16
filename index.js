@@ -24,12 +24,17 @@ let users = [
   { id: 2, name: "Jack", color: "powderblue" },
 ];
 
+const getUsers = await db.query("SELECT * FROM users");
+users = getUsers.rows;
+let currentUser = users[0];
+console.log(currentUser);
+
 async function checkVisisted() {
-  const result = await db.query("SELECT country_code FROM visited_countries");
-  let countries = [];
-  result.rows.forEach((country) => {
-    countries.push(country.country_code);
-  });
+  // const result = await db.query("SELECT country_code FROM visited_countries");
+  const result = await db.query("SELECT country_code FROM visited_countries WHERE user_id = $1", [currentUser.id]);
+  console.log(`found country rows: ${result.rows}`);
+  // create an array of just country code strings instead of javaScript objects
+  const countries = result.rows.map((country) => country.country_code);
   return countries;
 }
 app.get("/", async (req, res) => {
@@ -38,7 +43,7 @@ app.get("/", async (req, res) => {
     countries: countries,
     total: countries.length,
     users: users,
-    color: "teal",
+    color: currentUser.color,
   });
 });
 app.post("/add", async (req, res) => {
@@ -65,7 +70,12 @@ app.post("/add", async (req, res) => {
     console.log(err);
   }
 });
-app.post("/user", async (req, res) => {});
+app.post("/user", async (req, res) => {
+  const userQuery = await db.query("SELECT * FROM users WHERE id = $1;", [req.body.user]);
+  currentUser = userQuery.rows[0];
+  console.log(currentUser);
+  const result = await db.query("SELECT country_code FROM visited_countries WHERE user_id = $1", [currentUser.id]);
+});
 
 app.post("/new", async (req, res) => {
   //Hint: The RETURNING keyword can return the data that was inserted.
