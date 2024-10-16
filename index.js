@@ -17,16 +17,16 @@ db.connect();
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
 
-// let currentUserId = 1;
+let users = [];
+let errorMessage = null;
 
-let users = [
-  { id: 1, name: "Angela", color: "teal" },
-  { id: 2, name: "Jack", color: "powderblue" },
-];
-
-const getUsers = await db.query("SELECT * FROM users");
-users = getUsers.rows;
-let currentUser = users[0];
+async function getUsers() {
+  const getUsers = await db.query("SELECT * FROM users");
+  users = getUsers.rows;
+}
+await getUsers();
+// let currentUser = users[0];
+let currentUser = {};
 
 async function checkVisisted() {
   // const result = await db.query("SELECT country_code FROM visited_countries");
@@ -38,13 +38,18 @@ async function checkVisisted() {
 }
 
 app.get("/", async (req, res) => {
+  await getUsers();
+  if(Object.keys(currentUser).length === 0) currentUser = users[0];
   const countries = await checkVisisted();
   res.render("index.ejs", {
     countries: countries,
     total: countries.length,
     users: users,
     color: currentUser.color,
+    error: errorMessage
   });
+  errorMessage = null;
+  console.log(errorMessage);
 });
 
 app.post("/add", async (req, res) => {
@@ -63,7 +68,8 @@ app.post("/add", async (req, res) => {
     const currentSearch = await db.query("SELECT * FROM visited_countries WHERE country_code = $1 AND user_id = $2;", [countryCode, currentUser.id])
     console.log(`searched rows: ${currentSearch.rows}`);
     if(currentSearch.rows.length > 0){
-      res.redirect("/"); // TODO: render the page with errors
+      errorMessage = "That country has already been added."
+      res.redirect("/");
       console.log("Already in the database");
       return;
     }
@@ -76,23 +82,39 @@ app.post("/add", async (req, res) => {
     } catch (err) {
       console.log(err);
       // TODO: render the page with errors
+      errorMessage = "Error, couldn't insert into the database."
+      res.redirect("/");
     }
   } catch (err) {
     console.log(err);
     // TODO: render the page with errors
+    errorMessage = "Sorry, that country doesn't exist."
+      res.redirect("/");
   }
 });
 
 app.post("/user", async (req, res) => {
-  const userQuery = await db.query("SELECT * FROM users WHERE id = $1;", [req.body.user]);
-  currentUser = userQuery.rows[0];
+  console.log(req.body);
+  if(req.body.user){
+    const userQuery = await db.query("SELECT * FROM users WHERE id = $1;", [req.body.user]);
+    currentUser = userQuery.rows[0];
 
-  res.redirect("/");
+    res.redirect("/");
+  }else{
+    console.log("clicked on a family");
+    res.render("new.ejs");
+  }
 });
 
 app.post("/new", async (req, res) => {
   //Hint: The RETURNING keyword can return the data that was inserted.
   //https://www.postgresql.org/docs/current/dml-returning.html
+
+  const createNewUser = await db.query("INSERT INTO users (name, color) VALUES ($1, $2) RETURNING *", [req.body.name, req.body.color]);
+
+  currentUser = createNewUser.rows[0];
+
+  res.redirect("/");
 });
 
 app.listen(port, () => {
